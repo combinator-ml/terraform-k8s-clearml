@@ -5,6 +5,12 @@
 *.tfstate
 *.tfstate.*
 
+#kubeconfig
+kubeconfig
+
+#privkey
+id_rsa
+
 # Crash log files
 crash.log
 
