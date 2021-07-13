@@ -20,17 +20,20 @@ provider "helm" {
   }
 }
 
+resource "null_resource" "update_docker_daemon" {
+  provisioner "local-exec" {
+    command = "echo '{\"default-ulimits\": {\"nofile\": {\"name\": \"nofile\",\"hard\": 65536,\"soft\": 1024},\"memlock\":{\"name\": \"memlock\",\"soft\": -1,\"hard\": -1}}}' > /etc/docker/daemon.json && service docker restart && sleep 10"
+    interpreter = ["sudo", "bash", "-c"]
+  }
+}
+
 resource "null_resource" "rename_node" {
   provisioner "local-exec" {
     command = "kubectl label nodes $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}') app=clearml"
   }
-}
-
-resource "null_resource" "update_docker_daemon" {
-  provisioner "local-exec" {
-    command = "echo '{\"default-ulimits\": {\"nofile\": {\"name\": \"nofile\",\"hard\": 65536,\"soft\": 1024},\"memlock\":{\"name\": \"memlock\",\"soft\": -1,\"hard\": -1}}}' > /etc/docker/daemon.json"
-    interpreter = ["sudo", "bash", "-c"]
-  }
+  // wait for docker daemon restart to complete before we do anything that
+  // requires interacting with k8s
+  depends_on = [null_resource.update_docker_daemon]
 }
 
 resource "null_resource" "set_map_count" {
@@ -39,17 +42,11 @@ resource "null_resource" "set_map_count" {
   }
 }
 
-resource "null_resource" "restart_docker" {
-  provisioner "local-exec" {
-    command = "service docker restart"
-    interpreter = ["sudo", "bash", "-c"]
-  }
-}
-
 resource "kubernetes_namespace" "ns" {
   metadata {
     name = var.namespace
   }
+  depends_on = [null_resource.update_docker_daemon]
 }
 
 resource "helm_release" "clearml" {
@@ -72,5 +69,5 @@ resource "helm_release" "clearml" {
     name  = "elasticsearch.resources.limits.memory"
     value = var.es_limitsMemory
   }
+  depends_on = [null_resource.update_docker_daemon]
 }
-
