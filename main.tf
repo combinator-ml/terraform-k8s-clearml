@@ -1,10 +1,10 @@
 terraform {
   required_providers {
     kubernetes = {
-      version  = var.kubernetes_version
+      version  = "= 1.13.3"
     }
     helm = {
-      version = var.helm_version
+      version = "= 2.1.2"
     }
   }
   required_version = ">= 0.12"
@@ -28,23 +28,8 @@ resource "null_resource" "rename_node" {
 
 resource "null_resource" "update_docker_daemon" {
   provisioner "local-exec" {
-    command = "cat > /etc/docker/daemon.json <<EOL
-    { 
-      "default-ulimits": {
-         "nofile": {
-             "name": "nofile",
-             "hard": 65536,
-             "soft": 1024
-         },
-         "memlock":
-         {
-             "name": "memlock",
-             "soft": -1,
-             "hard": -1
-         }
-      }
-    }
-    EOL"
+    command = "echo '{\"default-ulimits\": {\"nofile\": {\"name\": \"nofile\",\"hard\": 65536,\"soft\": 1024},\"memlock\":{\"name\": \"memlock\",\"soft\": -1,\"hard\": -1}}}' > /etc/docker/daemon.json"
+    interpreter = ["sudo", "bash", "-c"]
   }
 }
 
@@ -56,7 +41,8 @@ resource "null_resource" "set_map_count" {
 
 resource "null_resource" "restart_docker" {
   provisioner "local-exec" {
-    command = "sudo service docker restart"
+    command = "service docker restart"
+    interpreter = ["sudo", "bash", "-c"]
   }
 }
 
@@ -71,5 +57,20 @@ resource "helm_release" "clearml" {
   repository = "https://allegroai.github.io/clearml-server-helm-cloud-ready/"
   chart      = "clearml-server-cloud-ready"
   namespace  = var.namespace
+
+  set {
+    name  = "elasticsearch.esJavaOpts"
+    value = var.es_JavaOpts
+  }
+
+  set {
+    name  = "elasticsearch.resources.requests.memory"
+    value = var.es_requestsMemory
+  }
+
+  set {
+    name  = "elasticsearch.resources.limits.memory"
+    value = var.es_limitsMemory
+  }
 }
 
