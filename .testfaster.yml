@@ -6,7 +6,7 @@ base:
     FROM quay.io/testfaster/kube-ubuntu
     ENV bump-cache 1
     RUN apt update
-    RUN apt install gnupg2 software-properties-common rsync -y
+    RUN apt install gnupg2 software-properties-common rsync socat -y
     RUN curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
     RUN apt-add-repository "deb [arch=$(dpkg --print-architecture)] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
     RUN apt install terraform -y
@@ -65,9 +65,9 @@ runtime:
   memory: 12GB
   disk: 50GB
 # How many ready VMs to keep running for instant testctl get
-prewarm_pool_size: 1
+prewarm_pool_size: 0
 # Upper bound for pool size, e.g. to keep memory usage sensible
-max_pool_size: 2
+max_pool_size: 1
 ports: [30080,30008,30081]
 # Timeout VMs after this long. Set to "" if you want to use
 # the VMs for long running development purposes rather than
